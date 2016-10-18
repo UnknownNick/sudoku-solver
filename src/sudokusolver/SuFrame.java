@@ -110,6 +110,19 @@ public class SuFrame extends Frame {
             }
         }
         
+        public int getDigit() {
+            return this.dig;
+        }
+        
+        public void setNumbers(int[] nums) {
+            if(nums.length == (dig*dig))
+                for(int i = 0; i < this.dig * this.dig; i++) {
+                    boxes[i].setText(Integer.toString(nums[i]));
+                }
+            else {
+                System.err.println("Bad int array provided.");
+            }
+        }
     }
     
     /**

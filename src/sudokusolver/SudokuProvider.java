@@ -9,7 +9,7 @@ package sudokusolver;
  * Class which provides data infrastructure for other modules.
  * @author JH
  */
-public class SudokuProvider {
+public class SudokuProvider implements Cloneable {
     
     /**
      * Greatest number used in this sudoku session.
@@ -52,7 +52,13 @@ public class SudokuProvider {
         for(int i = 0; i < digit*digit ; i++) {
             num[i] = new NumberBox(this.indexToPosition(i));
         }
-        
+    }
+    
+    public SudokuProvider(SudokuProvider sp) {
+        this(sp.getMaxDigit());
+        this.numbers = sp.numbers;
+        this.firstNumbers = sp.firstNumbers;
+        this.num = sp.num;
     }
     
     /**
@@ -177,6 +183,9 @@ public class SudokuProvider {
         return num[index].setFinally(number);
     }
     
+    /**
+     * @return variable digit
+     */
     public int getMaxDigit() {
         return this.digit;
     }
@@ -306,5 +315,13 @@ public class SudokuProvider {
          * Marks position of NumberBox
          */
         BOX_POS
+    }
+    
+    /**
+     * @return SudokuProvider object with same variable values as current one.
+     */
+    @Override
+    public SudokuProvider clone() {
+        return new SudokuProvider(this);
     }
 }

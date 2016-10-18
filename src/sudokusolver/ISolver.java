@@ -16,8 +16,9 @@ public interface ISolver {
     /**
      * Checks all possible numbers in represented part and removes these ones 
      * whitch are not possible in each NumberBox.
+     * @return true if changed stg, otherwise false.
      */
-    public void check();
+    public boolean check();
     
     /**
      * Finds concrete number in part of sudoku represented by implementing 
@@ -30,6 +31,7 @@ public interface ISolver {
     /**
      * Checks possible numbers and if there is only one remaining matches it as
      * final.
+     * @return true if changed stg, otherwise false.
      */
-    void checkPossibles();
+    public boolean checkPossibles();
 }
