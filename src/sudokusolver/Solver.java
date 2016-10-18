@@ -5,7 +5,12 @@
  */
 package sudokusolver;
 
+import sudokusolver.SudokuProvider.Column;
+import sudokusolver.SudokuProvider.Group;
+import sudokusolver.SudokuProvider.PosType;
 import sudokusolver.SudokuProvider.Position;
+import sudokusolver.SudokuProvider.Row;
+import sudokusolver.SudokuProvider.SuPart;
 
 /**
  *
@@ -33,9 +38,14 @@ public class Solver {
      */
     public ColisionPoint findColisionPoint() {
         Position p = null;
+        //current & new numbers
         int c = -1, n = -1;
-        //DODELAT
-        
+        for(NumberBox nb : sp.num) {
+            if(!nb.found && nb.getPossibleNums().length > 1) {
+                c = nb.getPossibleNums()[0];
+                n = nb.getPossibleNums()[1];
+            }
+        }
         
         return new ColisionPoint(p,c,n);
     }
@@ -46,7 +56,7 @@ public class Solver {
     
     public class ColisionPoint {
         /**
-         * Position of NumberBox causing colision.
+         * Position of NumberBox possibly causing colision.
          */
         final Position pos;
         /**
@@ -161,8 +171,10 @@ public class Solver {
                     //Run actual checks.
                     changed = rc.check() | cc.check() | gc.check() | rc.checkPossibles() | cc.checkPossibles() | gc.checkPossibles();
                 } else {
-                    //Split evaluation when current thread failed.
-                    split();
+                    ColisionPoint cp = findColisionPoint();
+                    sp.getNum(cp.getX(), cp.getY()).setFinally(cp.getOldThreadsNumber());
+                    split().sp.getNum(cp.getX(), cp.getY()).setFinally(cp.getNewThreadsNumber());
+                    //DODELAT možnost konfliktu - neřešitelná možnost vrácená ColisionPoint
                 }
             }
         }
@@ -174,6 +186,7 @@ public class Solver {
             Thread t = new Thread(nums,sp,++Solver.lastThreadId);
             t.start();
             return t;
+            //DODELAT
         }
         
         /**
@@ -189,12 +202,19 @@ public class Solver {
     }
 }
 
-class RowChecker implements ISolver {
+abstract class Checker<E extends SuPart> implements ISolver {
     protected Solver slv;
     protected SudokuProvider sp;
-    RowChecker(Solver parentSolver) {
+    Checker(Solver parentSolver) {
         slv = parentSolver;
         sp = slv.getProvider();
+    }
+    
+    protected NumberBox[] getPart(int i) {
+        if(this instanceof RowChecker) return sp.getRow(i);
+        if(this instanceof ColumnChecker) return sp.getColumn(i);
+        if(this instanceof GroupChecker) return sp.getGroup(sp.indexToGroupPosition(i));
+        return null;
     }
 
     @Override
@@ -204,7 +224,7 @@ class RowChecker implements ISolver {
         NumberBox tmpbox = null;
         int[] found;
         for(int i = 0; i < sp.getMaxDigit(); i++) {
-            NumberBox[] n = sp.getRow(i);
+            NumberBox[] n = getPart(i);
             found = new int[sp.getMaxDigit()];
             for(int u = 0; u < sp.getMaxDigit(); u++) {
                 found[u] = n[u].getNum();
@@ -222,7 +242,7 @@ class RowChecker implements ISolver {
                 }
             }
             /*
-             * Checks if any number is possible anly once here and then sets 
+             * Checks if any number is possible only once here and then sets 
              * it finally. 
              */
             for(int u = 1; u <= sp.getMaxDigit(); u++) {
@@ -247,7 +267,7 @@ class RowChecker implements ISolver {
     public boolean checkPossibles() {
         boolean changed = false;
         for(int i = 0; i < sp.getMaxDigit(); i++) {
-            NumberBox[] n = sp.getRow(i);
+            NumberBox[] n = getPart(i);
             for(NumberBox b:n) {
                 Integer[] ints = b.getPossibleNums();
                 if(ints.length==1){
@@ -257,143 +277,29 @@ class RowChecker implements ISolver {
             }
         }
         return changed;
+    }
+}
+
+class RowChecker extends Checker<Row> {
+    
+    public RowChecker(Solver parentSolver) {
+        super(parentSolver);
     }
     
 }
 
-class ColumnChecker implements ISolver {
-    protected Solver slv;
-    protected SudokuProvider sp;
-    ColumnChecker(Solver parentSolver) {
-        slv = parentSolver;
-        sp = slv.getProvider();
-    }
-    @Override
-    public boolean check() {
-        boolean changed = false;
-        int tmp;
-        NumberBox tmpbox = null;
-        int[] found;
-        for(int i = 0; i < sp.getMaxDigit(); i++) {
-            NumberBox[] n = sp.getColumn(i);
-            found = new int[sp.getMaxDigit()];
-            for(int u = 0; u < sp.getMaxDigit(); u++) {
-                found[u] = n[u].getNum();
-            }
-            
-            for(NumberBox b:n) {
-                for(int f:found) {
-                    if(f != 0 && b.isPossible(f)) {
-                        b.removePossibleNumber(f);
-                        changed = true;
-                    }
-                }
-            }
-            /*
-             * Checks if any number is possible anly once here and then sets 
-             * it finally. 
-             */
-            for(int u = 1; u <= sp.getMaxDigit(); u++) {
-                tmp = 0;
-                tmpbox = null;
-                for(NumberBox b:n) {
-                    if(b.isPossible(u)) {
-                        tmp++;
-                        if(tmp == 1) tmpbox = b;
-                    }
-                }
-                if(tmp == 1 && tmpbox != null) {
-                    tmpbox.setFinally(u);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
-    }
+class ColumnChecker extends Checker<Column> {
     
-    @Override
-    public boolean checkPossibles() {
-        boolean changed = false;
-        for(int i = 0; i < sp.getMaxDigit(); i++) {
-            NumberBox[] n = sp.getColumn(i);
-            for(NumberBox b:n) {
-                Integer[] ints = b.getPossibleNums();
-                if(ints.length==1){
-                    b.setFinally(ints[0]);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
+    public ColumnChecker(Solver parentSolver) {
+        super(parentSolver);
     }
     
 }
 
-class GroupChecker implements ISolver {
-    protected Solver slv;
-    protected SudokuProvider sp;
-    GroupChecker(Solver parentSolver) {
-        slv = parentSolver;
-        sp = slv.getProvider();
-    }
-    @Override
-    public boolean check() {
-        boolean changed = false;
-        int tmp;
-        NumberBox tmpbox = null;
-        int[] found;
-        for(int i = 0; i < sp.getMaxDigit(); i++) {
-            NumberBox[] n = sp.getGroup(sp.indexToGroupPosition(i));
-            found = new int[sp.getMaxDigit()];
-            for(int u = 0; u < sp.getMaxDigit(); u++) {
-                found[u] = n[u].getNum();
-            }
-            
-            for(NumberBox b:n) {
-                for(int f:found) {
-                    if(f != 0 && b.isPossible(f)) {
-                        b.removePossibleNumber(f);
-                        changed = true;
-                    }
-                }
-            }
-            /*
-             * Checks if any number is possible anly once here and then sets 
-             * it finally. 
-             */
-            for(int u = 1; u <= sp.getMaxDigit(); u++) {
-                tmp = 0;
-                tmpbox = null;
-                for(NumberBox b:n) {
-                    if(b.isPossible(u)) {
-                        tmp++;
-                        if(tmp == 1) tmpbox = b;
-                    }
-                }
-                if(tmp == 1 && tmpbox != null) {
-                    tmpbox.setFinally(u);
-                    changed = true;
-                }
-            }
-        }
-        
-        return changed;
-    }
+class GroupChecker extends Checker<Group> {
     
-    @Override
-    public boolean checkPossibles() {
-        boolean changed = false;
-        for(int i = 0; i < sp.getMaxDigit(); i++) {
-            NumberBox[] n = sp.getGroup(sp.indexToGroupPosition(i));
-            for(NumberBox b:n) {
-                Integer[] ints = b.getPossibleNums();
-                if(ints.length==1){
-                    b.setFinally(ints[0]);
-                    changed = true;
-                }
-            }
-        }
-        return changed;
+    public GroupChecker(Solver parentSolver) {
+        super(parentSolver);
     }
     
 }

@@ -191,9 +191,17 @@ public class SudokuProvider implements Cloneable {
     }
     
     /**
+     * Parent of sudoku chart parts.
+     */
+    public abstract class SuPart {
+        private Object pos;
+        public abstract Object getPos();
+    }
+    
+    /**
      * Class representing groups in sudoku.
      */
-    public static class Group {
+    public static class Group extends SuPart {
         /**
          * Position of this group.
          */
@@ -211,7 +219,7 @@ public class SudokuProvider implements Cloneable {
     /**
      * Class representing row of numbers
      */
-    public static class Row {
+    public static class Row extends SuPart {
         /**
          * Position of this row, top is 0.
          */
@@ -221,7 +229,8 @@ public class SudokuProvider implements Cloneable {
          * Returns position of this row.
          * @return position of this row
          */
-        public int getPos() {
+        @Override
+        public Integer getPos() {
             return this.pos;
         }
     }
@@ -229,7 +238,7 @@ public class SudokuProvider implements Cloneable {
     /**
      * Class representing column of numbers.
      */
-    public static class Column {
+    public static class Column extends SuPart {
         /**
          * Position of this column, most left is 0.
          */
@@ -239,7 +248,7 @@ public class SudokuProvider implements Cloneable {
          * Returns position of this column.
          * @return position of this column
          */
-        public int getPos() {
+        public Integer getPos() {
             return this.pos;
         }
     }
@@ -285,6 +294,7 @@ public class SudokuProvider implements Cloneable {
             this.y = y;
             this.type = type;
         }
+        
         
         /**
          * Returns x coordinate of this Position object.
